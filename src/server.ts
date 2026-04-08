@@ -36,7 +36,7 @@ server.registerTool(
   "bark_send",
   {
     description:
-      "Send a Bark notification. Title is fixed from config and cannot be overridden.",
+      "Send a Bark notification. Title and subtitle is fixed from config and cannot be overridden.",
     inputSchema: sendArgs,
   },
   async (args) => {
@@ -57,7 +57,7 @@ server.registerTool(
   "bark_test",
   {
     description:
-      "Send a Bark test notification using config defaults. Title is fixed from config.",
+      "Send a Bark test notification using config defaults.Title and subtitle is fixed from config.",
     inputSchema: {},
   },
   async () => {

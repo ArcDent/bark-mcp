@@ -1,8 +1,8 @@
 ---
 description: 通过本地 Bark MCP 发送一条 Bark 通知
-agent: build
+agent: Monarch
 ---
-请调用 `bark_send` MCP 工具发送 Bark 通知。
+请调用 `bark_bark_send` MCP 工具发送 Bark 通知。
 
 要求：
 - 将用户提供的内容作为通知正文发送。

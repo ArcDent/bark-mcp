@@ -1,6 +1,7 @@
-import type { Plugin } from "@opencode-ai/plugin"
+import type { Config, Plugin } from "@opencode-ai/plugin"
 
 type BarkLevel = "critical" | "active" | "timeSensitive" | "passive"
+type BarkConfigSource = Record<string, string | undefined>
 
 interface BarkPluginConfig {
   serverUrl: string
@@ -30,10 +31,10 @@ function parseNumber(value?: string) {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-function loadConfig(env: NodeJS.ProcessEnv): BarkPluginConfig | null {
-  const serverUrl = optionalValue(env.BARK_SERVER_URL)
-  const deviceKey = optionalValue(env.BARK_DEVICE_KEY)
-  const title = optionalValue(env.BARK_TITLE)
+function loadConfig(values: BarkConfigSource): BarkPluginConfig | null {
+  const serverUrl = optionalValue(values.BARK_SERVER_URL)
+  const deviceKey = optionalValue(values.BARK_DEVICE_KEY)
+  const title = optionalValue(values.BARK_TITLE)
 
   if (!serverUrl || !deviceKey || !title) {
     return null
@@ -43,16 +44,49 @@ function loadConfig(env: NodeJS.ProcessEnv): BarkPluginConfig | null {
     serverUrl: serverUrl.replace(/\/+$/, ""),
     deviceKey,
     title,
-    icon: optionalValue(env.BARK_ICON) ?? optionalValue(env.BARK_ICO_URL),
-    url: optionalValue(env.BARK_URL),
-    sound: optionalValue(env.BARK_SOUND),
-    group: optionalValue(env.BARK_GROUP),
-    level: optionalValue(env.BARK_LEVEL) as BarkLevel | undefined,
-    isArchive: optionalValue(env.BARK_IS_ARCHIVE),
-    autoCopy: optionalValue(env.BARK_AUTO_COPY),
-    badge: parseNumber(env.BARK_BADGE),
-    timeoutMs: parseNumber(env.BARK_TIMEOUT_MS) ?? 10000,
+    icon: optionalValue(values.BARK_ICON) ?? optionalValue(values.BARK_ICO_URL),
+    url: optionalValue(values.BARK_URL),
+    sound: optionalValue(values.BARK_SOUND),
+    group: optionalValue(values.BARK_GROUP),
+    level: optionalValue(values.BARK_LEVEL) as BarkLevel | undefined,
+    isArchive: optionalValue(values.BARK_IS_ARCHIVE),
+    autoCopy: optionalValue(values.BARK_AUTO_COPY),
+    badge: parseNumber(values.BARK_BADGE),
+    timeoutMs: parseNumber(values.BARK_TIMEOUT_MS) ?? 10000,
   }
+}
+
+function loadConfigFromOpencode(config: Config): BarkPluginConfig | null {
+  const bark = config.mcp?.bark
+  if (!bark || typeof bark !== "object" || !("environment" in bark)) {
+    return null
+  }
+
+  const environment = bark.environment
+  if (!environment || typeof environment !== "object") {
+    return null
+  }
+
+  return loadConfig(
+    Object.fromEntries(
+      Object.entries(environment).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    ),
+  )
+}
+
+function firstQuestionLabel(
+  questions?: Array<{
+    header?: string
+    question?: string
+  }>,
+) {
+  if (!questions?.length) return undefined
+
+  return questions
+    .map((question) => optionalValue(question.header) ?? optionalValue(question.question))
+    .find(Boolean)
 }
 
 function compact<T extends Record<string, unknown>>(value: T) {
@@ -95,53 +129,99 @@ async function sendBark(config: BarkPluginConfig, body: string, subtitle?: strin
 }
 
 export const BarkNotifyPlugin: Plugin = async ({ client }) => {
-  const config = loadConfig(process.env)
+  let config = loadConfig(process.env)
+  let warnedMissingConfig = false
   const sentPermissions = new Set<string>()
+  const sentQuestions = new Set<string>()
   const idleSessions = new Set<string>()
 
+  async function logWarn(message: string, extra?: Record<string, unknown>) {
+    await client.app.log({
+      body: {
+        service: "bark-notify",
+        level: "warn",
+        message,
+        extra,
+      },
+    })
+  }
+
   async function safeNotify(body: string, subtitle?: string) {
-    if (!config) return
+    if (!config) {
+      if (!warnedMissingConfig) {
+        warnedMissingConfig = true
+        await logWarn(
+          "Bark notification skipped because bark MCP environment is missing from OpenCode config.",
+        )
+      }
+      return
+    }
 
     try {
       await sendBark(config, body, subtitle)
     } catch (error) {
-      await client.app.log({
-        body: {
-          service: "bark-notify",
-          level: "warn",
-          message: "Failed to send Bark notification",
-          extra: {
-            error: error instanceof Error ? error.message : String(error),
-          },
-        },
+      await logWarn("Failed to send Bark notification", {
+        error: error instanceof Error ? error.message : String(error),
       })
     }
   }
 
   return {
-    "permission.asked": async (input) => {
-      const key = [input.sessionID, input.permission, JSON.stringify(input.patterns ?? [])].join(":")
-      if (sentPermissions.has(key)) return
-      sentPermissions.add(key)
-      await safeNotify("OpenCode needs your confirmation.", input.permission)
+    config: async (input) => {
+      config = loadConfigFromOpencode(input)
+      warnedMissingConfig = false
     },
-    "permission.replied": async (input) => {
-      const prefix = `${input.sessionID}:`
-      for (const key of [...sentPermissions]) {
-        if (key.startsWith(prefix)) sentPermissions.delete(key)
-      }
-    },
-    "session.status": async (input) => {
-      const type = input.status?.type
-      if (type === "busy") {
-        idleSessions.delete(input.sessionID)
-        return
-      }
+    event: async ({ event }) => {
+      switch (event.type) {
+        case "permission.asked": {
+          const input = event.properties
+          if (sentPermissions.has(input.id)) return
+          sentPermissions.add(input.id)
+          await safeNotify("OpenCode 需要你的确认。", input.permission)
+          return
+        }
 
-      if (type === "idle") {
-        if (idleSessions.has(input.sessionID)) return
-        idleSessions.add(input.sessionID)
-        await safeNotify("OpenCode reply is complete.")
+        case "permission.replied": {
+          sentPermissions.delete(event.properties.requestID)
+          return
+        }
+
+        case "question.asked": {
+          const input = event.properties
+          if (sentQuestions.has(input.id)) return
+          sentQuestions.add(input.id)
+          await safeNotify("OpenCode 需要你的回复。", firstQuestionLabel(input.questions))
+          return
+        }
+
+        case "question.replied":
+        case "question.rejected": {
+          sentQuestions.delete(event.properties.requestID)
+          return
+        }
+
+        case "session.status": {
+          const input = event.properties
+          const type = input.status?.type
+
+          if (type !== "idle") {
+            idleSessions.delete(input.sessionID)
+            return
+          }
+
+          if (idleSessions.has(input.sessionID)) return
+          idleSessions.add(input.sessionID)
+          await safeNotify("OpenCode 回复已完成。")
+          return
+        }
+
+        case "session.idle": {
+          const input = event.properties
+          if (idleSessions.has(input.sessionID)) return
+          idleSessions.add(input.sessionID)
+          await safeNotify("OpenCode 回复已完成。")
+          return
+        }
       }
     },
   }

@@ -1,8 +1,8 @@
 ---
 description: 通过本地 Bark MCP 发送一条测试通知
-agent: build
+agent: Monarch
 ---
-请调用 `bark_test` MCP 工具发送 Bark 测试通知。
+请调用 `bark_bark_test` MCP 工具发送 Bark 测试通知。
 
 要求：
 - 不要额外询问参数。
