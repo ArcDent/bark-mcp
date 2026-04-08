@@ -1,0 +1,8 @@
+{
+  "name": "opencode-local-bark-integration",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@opencode-ai/plugin": "latest"
+  }
+}
