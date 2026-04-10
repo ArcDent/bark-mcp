@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
+    "check:plugin-template": "tsc -p tsconfig.plugin-check.json --noEmit",
     "smoke": "tsx src/smoke.ts",
     "start": "node dist/server.js",
     "dev": "tsx src/server.ts",

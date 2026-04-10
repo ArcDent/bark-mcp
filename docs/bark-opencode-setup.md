@@ -92,6 +92,9 @@ npm run smoke -- "hello from direct bark smoke test"
         "BARK_SERVER_URL": "https://your-bark-server.example.com",
         "BARK_DEVICE_KEY": "your-device-key",
         "BARK_TITLE": "OpenCode",
+        "BARK_TITLE_PERMISSION": "OpenCode 需要确认",
+        "BARK_TITLE_QUESTION": "OpenCode 等待回复",
+        "BARK_TITLE_CONVERSATION_END": "OpenCode 回复完成",
         "BARK_URL": "",
         "BARK_ICO_URL": "https://example.com/icon.png",
         "BARK_SOUND": "",
@@ -126,6 +129,9 @@ npm run smoke -- "hello from direct bark smoke test"
         "BARK_SERVER_URL": "https://your-bark-server.example.com",
         "BARK_DEVICE_KEY": "your-device-key",
         "BARK_TITLE": "OpenCode",
+        "BARK_TITLE_PERMISSION": "OpenCode 需要确认",
+        "BARK_TITLE_QUESTION": "OpenCode 等待回复",
+        "BARK_TITLE_CONVERSATION_END": "OpenCode 回复完成",
         "BARK_URL": "",
         "BARK_ICO_URL": "https://example.com/icon.png",
         "BARK_SOUND": "",
@@ -267,6 +273,13 @@ npm run smoke -- "hello from direct bark smoke test"
 bun install --cwd "./.opencode"
 ```
 
+这个模板的默认行为是：
+
+- 权限申请通知：正文使用权限申请本身的标题 / 内容
+- 问题通知：正文使用问题的 `header` 或 `question`
+- 会话完成通知：正文使用最后一条 assistant 文本的前约 10+ 个字符（当前模板默认取前 12 个字符）并追加 `......`
+- 标题始终来自配置，运行时不会动态覆盖；如果你没有分别配置事件标题，会回退到 `BARK_TITLE`
+
 ---
 
 ## 8. 推荐接入顺序
@@ -288,7 +301,10 @@ bun install --cwd "./.opencode"
 
 - `BARK_SERVER_URL`：Bark 服务端地址，不要带 `/push`
 - `BARK_DEVICE_KEY`：设备 key
-- `BARK_TITLE`：固定通知标题，运行时不能覆盖
+- `BARK_TITLE`：固定通知标题；MCP 本体直接使用它，插件模板也会把它作为默认回退标题
+- `BARK_TITLE_PERMISSION`：仅用于自动通知插件的“权限请求”标题；未配置时回退到 `BARK_TITLE`
+- `BARK_TITLE_QUESTION`：仅用于自动通知插件的“问题回复”标题；未配置时回退到 `BARK_TITLE`
+- `BARK_TITLE_CONVERSATION_END`：仅用于自动通知插件的“会话完成”标题；未配置时回退到 `BARK_TITLE`
 - `BARK_URL`：默认点击跳转地址
 - `BARK_ICO_URL`：`icon` 的别名，方便配置图标地址
 - `BARK_SOUND`：默认铃声
@@ -305,6 +321,7 @@ bun install --cwd "./.opencode"
 ## 10. 额外说明
 
 - `title` 只能来自配置，不能在 `bark_send` 时动态传入
+- 自动通知插件的标题同样只能来自配置，只是可以按事件拆成 3 个固定标题
 - `BARK_ICO_URL` 在内部会被映射为 Bark 的 `icon`
 - 如果 Bark 发送失败，不应该阻塞主流程
 - 本仓库故意不包含 live `.opencode` 文件，避免 OpenCode 自动加载后造成干扰

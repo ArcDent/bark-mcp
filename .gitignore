@@ -4,3 +4,4 @@ coverage/
 test/**/*.js
 test/**/*.d.ts
 *.log
+.opencode/ralph-loop.local.md
