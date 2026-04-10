@@ -16,6 +16,8 @@
 - 支持 `BARK_ICO_URL` 作为 `icon` 的友好别名
 - 提供 `bark_send` 与 `bark_test` 两个 MCP 工具
 - 提供独立的 `smoke` 命令，方便你在接 OpenCode 之前先直连测试 Bark
+- 可选 OpenCode 插件模板支持 3 类固定标题：权限请求、提出问题、会话完成
+- 可选 OpenCode 插件模板支持动态通知正文：权限内容、问题标题、回复预览
 
 ## 目录说明
 
@@ -99,6 +101,12 @@ npm run smoke
 ## 重要约束
 
 - `title` 是配置项，不允许在 `bark_send` 里动态覆盖
+- `BARK_TITLE` 仍然是 MCP 本体与插件模板的默认固定标题
+- 如果你使用 `docs/templates/opencode.plugins.bark-notify.ts`，还可以额外配置：
+  - `BARK_TITLE_PERMISSION`
+  - `BARK_TITLE_QUESTION`
+  - `BARK_TITLE_CONVERSATION_END`
+- 上述 3 个插件标题如果未设置，会自动回退到 `BARK_TITLE`
 - 仓库里不包含任何会被 OpenCode 自动加载的 live `.opencode` 文件
 - `docs/templates/` 里的内容只是模板，只有你手动复制后才会生效
 
