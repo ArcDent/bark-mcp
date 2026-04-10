@@ -175,6 +175,47 @@ function firstQuestionLabel(
     .find(Boolean)
 }
 
+function permissionKey(permission: Record<string, unknown> | undefined) {
+  if (!permission) return undefined
+
+  const metadata = recordValue(permission.metadata)
+
+  return (
+    optionalValue(stringValue(permission.permission)) ??
+    optionalValue(stringValue(permission.type)) ??
+    optionalValue(stringValue(metadata?.permission)) ??
+    optionalValue(stringValue(metadata?.type))
+  )
+}
+
+function permissionTranslation(permission: Record<string, unknown> | undefined) {
+  const key = permissionKey(permission)
+  if (!key) return "请求权限"
+
+  const normalized = key.toLowerCase()
+  const translated = {
+    read: "读取文件",
+    edit: "编辑文件",
+    write: "写入文件",
+    glob: "搜索文件",
+    grep: "搜索内容",
+    list: "查看目录",
+    bash: "执行命令",
+    task: "委托子任务",
+    todowrite: "更新待办",
+    question: "发起提问",
+    webfetch: "访问网页",
+    websearch: "联网搜索",
+    codesearch: "搜索代码",
+    external_directory: "访问外部目录",
+    lsp: "调用语言服务",
+    skill: "加载技能",
+    doom_loop: "执行代理循环",
+  } satisfies Record<string, string>
+
+  return translated[normalized] ?? `请求权限（${key}）`
+}
+
 function permissionLabel(permission: Record<string, unknown> | undefined) {
   if (!permission) return undefined
 
@@ -182,12 +223,12 @@ function permissionLabel(permission: Record<string, unknown> | undefined) {
   const metadataTitle = optionalValue(stringValue(metadata?.title))
   const metadataMessage = optionalValue(stringValue(metadata?.message))
   const metadataDescription = optionalValue(stringValue(metadata?.description))
+  const key = permissionKey(permission)
 
   const direct =
     optionalValue(stringValue(permission.title)) ??
     optionalValue(stringValue(permission.message)) ??
     optionalValue(stringValue(permission.description)) ??
-    optionalValue(stringValue(permission.permission)) ??
     metadataTitle ??
     metadataMessage ??
     metadataDescription
@@ -203,16 +244,23 @@ function permissionLabel(permission: Record<string, unknown> | undefined) {
     optionalValue(stringValue(permission.pattern)) ??
     optionalValue(stringValue(permission.patterns))
 
-  const type = optionalValue(stringValue(permission.type))
-
-  if (type && pattern) return `${type}: ${pattern}`
-  return type ?? pattern
+  if (key && pattern) return `${key}: ${pattern}`
+  return pattern ?? key
 }
 
-function previewAssistantReply(value?: string, limit = 12) {
+function permissionNotificationBody(permission: Record<string, unknown> | undefined) {
+  const content = permissionLabel(permission)
+  if (!content) return undefined
+  return `${permissionTranslation(permission)}|${content}`
+}
+
+function previewAssistantReply(value?: string, limit = 100) {
   const normalized = normalizeInlineText(value)
   if (!normalized) return undefined
-  return `${Array.from(normalized).slice(0, limit).join("")}......`
+
+  const chars = Array.from(normalized)
+  if (chars.length <= limit) return normalized
+  return `${chars.slice(0, limit).join("")}......`
 }
 
 function compact<T extends Record<string, unknown>>(value: T) {
@@ -463,7 +511,7 @@ export const BarkNotifyPlugin: Plugin = async ({ client }) => {
         case "permission.updated": {
           const input = properties
           const id = stringValue(input?.id)
-          const body = permissionLabel(input)
+          const body = permissionNotificationBody(input)
           if (!id || !body || sentPermissions.has(id)) return
           sentPermissions.add(id)
           await safeNotify("permission", body)
@@ -473,7 +521,7 @@ export const BarkNotifyPlugin: Plugin = async ({ client }) => {
         case "permission.asked": {
           const input = properties
           const id = stringValue(input?.id)
-          const body = permissionLabel(input)
+          const body = permissionNotificationBody(input)
           if (!id || !body || sentPermissions.has(id)) return
           sentPermissions.add(id)
           await safeNotify("permission", body)
