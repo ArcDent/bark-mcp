@@ -11,6 +11,11 @@ function compact<T extends Record<string, unknown>>(value: T) {
   )
 }
 
+function redactRequest(payload: Record<string, unknown>) {
+  const { device_key: _deviceKey, ...safePayload } = payload
+  return safePayload
+}
+
 function createPayload(config: BarkConfig, input: BarkSendInput) {
   const body = input.markdown?.trim() ? undefined : input.body?.trim()
   const markdown = input.markdown?.trim() || undefined
@@ -111,7 +116,7 @@ export async function sendBark(
       ok,
       status: response.status,
       barkCode,
-      request: payload,
+      request: redactRequest(payload),
       response: parsed,
       error,
     }
@@ -126,7 +131,7 @@ export async function sendBark(
     return {
       ok: false,
       status: 0,
-      request: payload,
+      request: redactRequest(payload),
       response: message,
       error: message,
     }

@@ -26,7 +26,7 @@ const sendArgs = {
   image: z.string().url().optional(),
   copy: z.string().min(1).optional(),
   action: z.string().min(1).optional(),
-  volume: z.number().min(0).max(10).optional(),
+  volume: z.number().int().min(0).max(10).optional(),
   ciphertext: z.string().min(1).optional(),
   id: z.string().min(1).optional(),
   delete: z.string().min(1).optional(),
@@ -36,7 +36,7 @@ server.registerTool(
   "bark_send",
   {
     description:
-      "Send a Bark notification. Title and subtitle is fixed from config and cannot be overridden.",
+      "Send a Bark notification. Title is fixed from config; subtitle can be supplied per request.",
     inputSchema: sendArgs,
   },
   async (args) => {
@@ -56,8 +56,7 @@ server.registerTool(
 server.registerTool(
   "bark_test",
   {
-    description:
-      "Send a Bark test notification using config defaults.Title and subtitle is fixed from config.",
+    description: "Send a Bark test notification using config defaults.",
     inputSchema: {},
   },
   async () => {

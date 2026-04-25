@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "outDir": "../../dist/templates",
+    "types": ["node"]
+  },
+  "include": ["opencode.plugins.bark-notify.ts", "opencode-plugin.d.ts"]
+}

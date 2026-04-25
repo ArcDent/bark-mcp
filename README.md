@@ -110,6 +110,15 @@ npm run smoke
 - 仓库里不包含任何会被 OpenCode 自动加载的 live `.opencode` 文件
 - `docs/templates/` 里的内容只是模板，只有你手动复制后才会生效
 
+## 本次更新
+
+- MCP 工具描述更准确：`title` 始终来自配置，`subtitle` 可在运行时传入。
+- 运行时 `volume` 与环境变量校验保持一致，均要求整数且范围为 `0-10`。
+- `sendBark` 返回的请求快照会隐藏 `device_key`，但实际发送给 Bark 的请求仍包含设备密钥。
+- 测试覆盖新增配置边界、HTTP/非 JSON 响应、超时错误与请求脱敏场景。
+- `docs/templates/opencode.plugins.bark-notify.ts` 与主配置的数字校验规则保持一致，并新增模板类型检查。
+- 新增 GitHub Actions CI，自动执行安装、类型检查、测试与构建。
+
 ## 手动接入说明
 
 请阅读：

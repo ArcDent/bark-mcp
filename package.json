@@ -6,10 +6,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
+    "check:templates": "tsc -p docs/templates/tsconfig.json --noEmit",
     "smoke": "tsx src/smoke.ts",
     "start": "node dist/server.js",
     "dev": "tsx src/server.ts",
-    "test": "vitest run"
+    "test": "sh -c 'vitest run \"$@\" && npm run check:templates' --"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.4",

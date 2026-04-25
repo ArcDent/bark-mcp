@@ -35,11 +35,31 @@ function optionalValue(value?: string) {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
-function parseNumber(value?: string) {
+function parseNumber(
+  name: string,
+  value: string | undefined,
+  options?: {
+    integer?: boolean
+    min?: number
+    max?: number
+  },
+) {
   const normalized = optionalValue(value)
   if (!normalized) return undefined
   const parsed = Number(normalized)
-  return Number.isFinite(parsed) ? parsed : undefined
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${name} must be a valid number`)
+  }
+  if (options?.integer && !Number.isInteger(parsed)) {
+    throw new Error(`${name} must be an integer`)
+  }
+  if (options?.min !== undefined && parsed < options.min) {
+    throw new Error(`${name} must be greater than or equal to ${options.min}`)
+  }
+  if (options?.max !== undefined && parsed > options.max) {
+    throw new Error(`${name} must be less than or equal to ${options.max}`)
+  }
+  return parsed
 }
 
 function normalizeInlineText(value?: string) {
@@ -122,6 +142,11 @@ function loadConfig(values: BarkConfigSource): BarkPluginConfig | null {
     return null
   }
 
+  const timeoutMs = parseNumber("BARK_TIMEOUT_MS", values.BARK_TIMEOUT_MS) ?? 10000
+  if (timeoutMs <= 0) {
+    throw new Error("BARK_TIMEOUT_MS must be greater than 0")
+  }
+
   return {
     serverUrl: serverUrl.replace(/\/+$/, ""),
     deviceKey,
@@ -137,8 +162,8 @@ function loadConfig(values: BarkConfigSource): BarkPluginConfig | null {
     level: optionalValue(values.BARK_LEVEL) as BarkLevel | undefined,
     isArchive: optionalValue(values.BARK_IS_ARCHIVE),
     autoCopy: optionalValue(values.BARK_AUTO_COPY),
-    badge: parseNumber(values.BARK_BADGE),
-    timeoutMs: parseNumber(values.BARK_TIMEOUT_MS) ?? 10000,
+    badge: parseNumber("BARK_BADGE", values.BARK_BADGE, { integer: true }),
+    timeoutMs,
   }
 }
 
@@ -193,7 +218,7 @@ function permissionTranslation(permission: Record<string, unknown> | undefined) 
   if (!key) return "请求权限"
 
   const normalized = key.toLowerCase()
-  const translated = {
+  const translated: Record<string, string> = {
     read: "读取文件",
     edit: "编辑文件",
     write: "写入文件",
@@ -211,7 +236,7 @@ function permissionTranslation(permission: Record<string, unknown> | undefined) 
     lsp: "调用语言服务",
     skill: "加载技能",
     doom_loop: "执行代理循环",
-  } satisfies Record<string, string>
+  }
 
   return translated[normalized] ?? `请求权限（${key}）`
 }
